@@ -1,0 +1,14 @@
+- Market  - Left value is the asset they want to buy, right value is the asset they are trading off
+- Type - Refers to transaction order type:
+	Limit - Buyer sets a price limit for what they want to buy.  If price doesn't hit their limit, then the transaction is not filled.
+	Market - Buyer is purchasing from the first available seller, price doesn't matter.
+	Ceiling - Buyer is buying any amount of asset at price. 
+- Side
+	- Buy - Bought the asset
+	- Sell - Sold the asset
+- Size - How many assets are purchased 
+	- Left side is how many ordered
+	- Right side is how many requested (should be equal except ceiling types)
+- Price - Buyer sets price (ceiling is always 0)
+- Subtotal - Before the fees
+- Fees - Trading fees

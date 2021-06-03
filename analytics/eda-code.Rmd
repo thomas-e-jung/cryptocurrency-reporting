@@ -1,0 +1,116 @@
+---
+title: "Cryptocurrency Transactions EDA"
+author: "Thomas Jung"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages("readxl")
+# install.packages("tidyverse")
+# install.packages("lubridate")
+# install.packages("car")
+
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(car)
+```
+
+Exploratory Data Analysis
+```{r}
+# getwd()
+file_name <- "eda.xlsx"
+excel_sheets(file_name)
+data_raw <- read_excel(file_name, sheet = "test")
+
+# str(data_raw)
+# summary(data_raw)
+
+data_clean <- data_raw %>%
+  rename(Order_Datetime = "Order Time (UTC)", Assets_Ordered = "Assets Ordered", Assets_Requested = "Assets Requested", Price_Limit = "Price Limit") %>%
+  mutate_at(vars(UserID), as.factor) %>%
+  mutate_at(vars(Order_Datetime), ymd_hms) %>%
+  mutate_if(is.character, as.factor)
+
+# Check for missing TXNID
+TXNID_min <- min(as.numeric(data_clean$TXNID))
+TXNID_max <- max(as.numeric(data_clean$TXNID))
+identical(data_clean$TXNID, as.numeric(seq(TXNID_min, TXNID_max)))
+
+# Check for missing UserID
+UserID_min <- min(as.numeric(data_clean$UserID))
+UserID_max <- max(as.numeric(data_clean$UserID))
+identical(as.numeric(levels(data_clean$UserID)), as.numeric(seq(UserID_min, UserID_max)))
+
+# Missing Data
+sum(is.na(data_clean))
+
+
+str(data_clean)
+summary(data_clean)
+
+# Outliers
+outlier_rows <- Boxplot(data_clean$Assets_Ordered)
+data_clean[outlier_rows,]
+
+data_clean %>%
+  filter(UserID == 133) %>%
+  arrange(desc(Assets_Ordered)) %>%
+  select(-c(TXNID, FSA, Province, Order_Datetime, Market_Tradeoff, Type, Side, Assets_Requested))
+
+data_clean %>%
+  filter(UserID == 1) %>%
+  arrange(desc(Assets_Ordered)) %>%
+  select(-c(TXNID, FSA, Province, Order_Datetime, Market_Tradeoff, Type, Side, Assets_Requested))
+# Assets Ordered: no outliers since users 1 & 133 frequently order large amounts of assets at very low price, resulting in small subtotals.
+
+
+outlier_rows <- Boxplot(data_clean$Price_Limit)
+data_clean[outlier_rows,]
+
+data_clean %>%
+  filter(Market_Purchase == "BTC") %>%
+  arrange(desc(Price_Limit)) %>%
+  select(-c(TXNID, FSA, Province, Order_Datetime, Market_Tradeoff, Type, Side, Assets_Requested))
+
+# Price Limit: no outliers since BTC is frequently purchased at high price, and price limit can be set higher than market price by users
+
+
+outlier_rows <- Boxplot(data_clean$Subtotal)
+data_clean[outlier_rows,]
+
+subtotal_outliers <- data_clean[outlier_rows,]
+outlier_users <- subtotal_outliers$UserID %>%
+  droplevels %>%
+  levels %>%
+  as.numeric
+
+data_clean %>%
+  filter(UserID %in% outlier_users) %>%
+  group_by(UserID) %>%
+  summarize(median_Subtotal = median(Subtotal))
+# Subtotal: no outliers since outlier_users frequently purchased or sold large sums of assets, and because most of the transactions involved BTC
+
+
+outlier_rows <- Boxplot(data_clean$Fees)
+fees_outliers <- data_clean[outlier_rows,]
+fees_outliers %>%
+  select(Subtotal) %>%
+  range
+# Fees: no outliers since large fees were accompanied by large subtotals
+
+
+# Which user had the most diverse portfolio?
+data_clean %>%
+  group_by(UserID) %>%
+  summarize(unique_Assets = n_distinct(Market_Purchase)) %>%
+  arrange(desc(unique_Assets))
+# User 1 with 14 unique assets
+
+
+# write_excel_csv(data_clean, "test_clean.csv")
+```
